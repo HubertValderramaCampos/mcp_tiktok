@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "tiktok": {
+      "command": "node",
+      "args": ["server.mjs"]
+    }
+  }
+}

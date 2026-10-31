@@ -1,0 +1,12 @@
+node_modules/
+
+# Sesiones y credenciales: nunca subirlas
+cookies*.txt
+cookies*.json
+*.cookies
+.env
+.env.*
+brave-profile/
+
+# Capturas de pantalla: pueden mostrar datos de la cuenta
+screenshots/
