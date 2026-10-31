@@ -2,7 +2,7 @@
 
 Servidor [MCP](https://modelcontextprotocol.io) para gestionar una cuenta de TikTok desde un asistente de IA: subir videos, consultar métricas y publicar comentarios.
 
-Funciona automatizando la web de TikTok con Brave. Se ejecuta en Docker o directamente con Node.js.
+Funciona automatizando la web de TikTok con Brave o Google Chrome. Se ejecuta en Docker o directamente con Node.js.
 
 > Proyecto independiente, sin relación con TikTok. Automatizar la web puede ir en contra de sus normas: úsalo con tu propia cuenta y bajo tu responsabilidad.
 
@@ -56,7 +56,7 @@ La sesión queda guardada en el volumen `mcp-tiktok-data`. Los detalles están e
 
 ## Instalación con Node.js
 
-Necesitas Node.js 20 o superior y [Brave](https://brave.com).
+Necesitas Node.js 20 o superior y [Brave](https://brave.com) o [Google Chrome](https://www.google.com/chrome/). El servidor usa Brave si está instalado y, si no, Chrome. Para elegir uno, define `TIKTOK_BROWSER`.
 
 ```bash
 git clone https://github.com/HubertValderramaCampos/mcp_tiktok.git
@@ -77,13 +77,13 @@ Claude Code detecta el servidor con el archivo `.mcp.json` al abrir la carpeta. 
 }
 ```
 
-Después ejecuta `tiktok_login` e inicia sesión en la ventana de Brave. La sesión se guarda en un perfil dedicado, separado de tu navegador habitual.
+Después ejecuta `tiktok_login` e inicia sesión en la ventana del navegador. La sesión se guarda en un perfil dedicado, separado de tu navegador habitual.
 
 ## Herramientas
 
 | Herramienta | Descripción |
 |---|---|
-| `tiktok_login` | Abre Brave para iniciar sesión manualmente |
+| `tiktok_login` | Abre el navegador para iniciar sesión manualmente |
 | `tiktok_list_videos` | Lista los videos de la cuenta con sus métricas |
 | `tiktok_get_video` | Muestra las métricas de un video |
 | `tiktok_account_stats` | Muestra las estadísticas de una cuenta |
@@ -97,7 +97,7 @@ Parámetros y respuestas en la [referencia de herramientas](docs/herramientas.md
 ```mermaid
 flowchart LR
     A[Cliente MCP] -->|stdio| B[server.mjs]
-    B -->|Playwright| C[Brave]
+    B -->|Playwright| C[Brave o Chrome]
     C --> D[TikTok Studio]
     C --> E[Páginas de video]
     F[Volumen o perfil local] --- C
@@ -107,31 +107,20 @@ La API oficial de TikTok no ofrece un endpoint para escribir comentarios y, sin 
 
 Las métricas se leen de la respuesta que TikTok Studio recibe al cargar la página, sin reproducir firmas ni tokens.
 
-## Estado del proyecto
-
-| Función | Estado |
-|---|---|
-| Inicio de sesión con QR en Windows | Probado |
-| Métricas de videos y cuenta | Probado |
-| Subida sin publicar | Probado |
-| Imagen Docker: arranque, navegador y vista remota | Probado |
-| Inicio de sesión dentro de Docker | Pendiente de probar |
-| Publicar un video | Pendiente de probar |
-| Publicar un comentario | Pendiente de probar |
-
 El servidor depende de la interfaz web de TikTok, por lo que un cambio en ella puede requerir ajustes.
 
 ## Configuración
 
 | Variable | Descripción | Valor por defecto |
 |---|---|---|
-| `BRAVE_PATH` | Ruta del ejecutable de Brave | Ruta estándar del sistema |
+| `TIKTOK_BROWSER` | Navegador: `brave` o `chrome` | Brave si está instalado; si no, Chrome |
+| `BROWSER_PATH` | Ruta del ejecutable del navegador | Ruta estándar del sistema |
 | `TIKTOK_MCP_DIR` | Carpeta del perfil y las capturas | `%LOCALAPPDATA%\mcp-tiktok`; en Docker, `/data` |
 | `TIKTOK_USERNAME` | Cuenta por defecto de `tiktok_account_stats` | Sin definir |
 
 ## Seguridad
 
-- No compartas cookies, tokens ni la carpeta `brave-profile`: dan acceso a tu cuenta.
+- No compartas cookies, tokens ni las carpetas `brave-profile` y `chrome-profile`: dan acceso a tu cuenta.
 - Revisa las capturas antes de compartirlas, porque pueden mostrar datos de la cuenta.
 - Publica el puerto 6080 solo en `127.0.0.1`. La vista remota no tiene contraseña y muestra tu sesión.
 - En un servidor, accede a ese puerto con un túnel SSH.
@@ -141,7 +130,7 @@ El servidor depende de la interfaz web de TikTok, por lo que un cambio en ella p
 | Problema | Solución |
 |---|---|
 | `No hay sesion iniciada` | Ejecuta `tiktok_login` |
-| `TikTok muestra un captcha` | Resuélvelo manualmente en la ventana de Brave y reintenta |
+| `TikTok muestra un captcha` | Resuélvelo manualmente en la ventana del navegador y reintenta |
 | `Maximum number of attempts reached` | Es un límite de TikTok: espera unas horas y usa el código QR |
 | Resultado `unconfirmed` | Revisa la captura antes de reintentar para evitar duplicados |
 | Un tutorial bloquea la página | Se cierran automáticamente los tutoriales conocidos; si aparece otro, abre un issue |

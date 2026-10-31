@@ -4,7 +4,7 @@ Todas las herramientas devuelven JSON. Si una operación falla, responden con un
 
 ## tiktok_login
 
-Abre Brave para iniciar sesión manualmente. Solo hace falta una vez.
+Abre el navegador para iniciar sesión manualmente. Solo hace falta una vez.
 
 | Parámetro | Tipo | Por defecto | Descripción |
 |---|---|---|---|

@@ -22,7 +22,8 @@ RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh \
     && mkdir -p /data /videos \
     && chown node:node /data
 
-ENV BRAVE_PATH=/usr/bin/brave-browser \
+ENV TIKTOK_BROWSER=brave \
+    BROWSER_PATH=/usr/bin/brave-browser \
     TIKTOK_MCP_DIR=/data \
     TIKTOK_NO_SANDBOX=1 \
     DISPLAY=:99

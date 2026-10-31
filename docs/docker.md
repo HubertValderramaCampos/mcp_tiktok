@@ -1,6 +1,6 @@
 # Guía de Docker
 
-La imagen incluye Brave, una pantalla virtual y una vista remota por navegador. Así el servidor puede ejecutarse en cualquier equipo con Docker, incluso sin entorno gráfico.
+La imagen usa Brave e incluye una pantalla virtual y una vista remota por navegador. Así el servidor puede ejecutarse en cualquier equipo con Docker, incluso sin entorno gráfico.
 
 ## Construir la imagen
 
@@ -57,6 +57,7 @@ TikTok puede pedir más verificaciones desde direcciones IP de centros de datos.
 
 ## Notas
 
+- La imagen solo incluye Brave. Para usar Chrome, ejecuta el servidor con Node.js.
 - La imagen ocupa cerca de 2 GB, porque incluye un navegador completo.
 - El contenedor desactiva el sandbox de Chromium (`TIKTOK_NO_SANDBOX=1`), que no arranca con el perfil de seguridad por defecto de Docker. Úsalo solo con tu propia cuenta.
 - El contenedor funciona como un usuario sin privilegios.

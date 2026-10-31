@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// MCP basico de TikTok. Automatiza la web de TikTok con Brave y un perfil dedicado.
+// MCP basico de TikTok. Automatiza la web de TikTok con Brave o Chrome y un perfil dedicado.
 // stdout pertenece al protocolo MCP: todo log debe ir a stderr.
 import { existsSync, mkdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
@@ -9,16 +9,50 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { chromium } from "playwright-core";
 import { z } from "zod";
 
-const DEFAULT_BRAVE_PATHS = {
-  win32: "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
-  darwin: "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
-  linux: "/usr/bin/brave-browser",
+const BROWSER_PATHS = {
+  brave: {
+    win32: [
+      "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+      join(process.env.LOCALAPPDATA ?? "", "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+    ],
+    darwin: ["/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"],
+    linux: ["/usr/bin/brave-browser"],
+  },
+  chrome: {
+    win32: [
+      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+      join(process.env.LOCALAPPDATA ?? "", "Google", "Chrome", "Application", "chrome.exe"),
+    ],
+    darwin: ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"],
+    linux: ["/usr/bin/google-chrome", "/usr/bin/google-chrome-stable"],
+  },
 };
-const BRAVE_PATH = process.env.BRAVE_PATH ?? DEFAULT_BRAVE_PATHS[process.platform];
+
+// Sin TIKTOK_BROWSER usa Brave si esta instalado y, si no, Chrome.
+function resolveBrowser() {
+  const wanted = process.env.TIKTOK_BROWSER?.toLowerCase();
+  if (wanted && !BROWSER_PATHS[wanted]) {
+    throw new Error(`TIKTOK_BROWSER debe ser brave o chrome, no "${wanted}".`);
+  }
+  const custom = process.env.BROWSER_PATH;
+  if (custom) {
+    if (!existsSync(custom)) throw new Error(`No encuentro el navegador en ${custom}.`);
+    return { name: wanted ?? (/chrome/i.test(custom) ? "chrome" : "brave"), path: custom };
+  }
+  for (const name of wanted ? [wanted] : ["brave", "chrome"]) {
+    const path = BROWSER_PATHS[name][process.platform]?.find((p) => existsSync(p));
+    if (path) return { name, path };
+  }
+  throw new Error(
+    wanted
+      ? `No encuentro ${wanted}. Instalalo o define BROWSER_PATH.`
+      : "No encuentro Brave ni Chrome. Instala uno o define BROWSER_PATH.",
+  );
+}
 const DATA_DIR =
   process.env.TIKTOK_MCP_DIR ??
   join(process.env.LOCALAPPDATA ?? homedir(), "mcp-tiktok");
-const PROFILE_DIR = join(DATA_DIR, "brave-profile");
 const SHOTS_DIR = join(DATA_DIR, "screenshots");
 const IDLE_CLOSE_MS = 5 * 60_000;
 
@@ -47,7 +81,7 @@ let context = null;
 let idleTimer = null;
 let queue = Promise.resolve();
 
-// Una sola operacion a la vez: todas comparten la misma ventana de Brave.
+// Una sola operacion a la vez: todas comparten la misma ventana del navegador.
 function serial(fn) {
   const run = queue.then(fn, fn);
   queue = run.catch(() => {});
@@ -57,12 +91,12 @@ function serial(fn) {
 async function getContext() {
   clearTimeout(idleTimer);
   if (context) return context;
-  if (!existsSync(BRAVE_PATH)) {
-    throw new Error(`No encuentro Brave en ${BRAVE_PATH}. Define BRAVE_PATH.`);
-  }
-  mkdirSync(PROFILE_DIR, { recursive: true });
-  context = await chromium.launchPersistentContext(PROFILE_DIR, {
-    executablePath: BRAVE_PATH,
+  const browser = resolveBrowser();
+  // Cada navegador tiene su propio perfil: no son compatibles entre si.
+  const profileDir = join(DATA_DIR, `${browser.name}-profile`);
+  mkdirSync(profileDir, { recursive: true });
+  context = await chromium.launchPersistentContext(profileDir, {
+    executablePath: browser.path,
     headless: false,
     // El sandbox de Chromium no arranca con el perfil seccomp por defecto de Docker.
     chromiumSandbox: process.env.TIKTOK_NO_SANDBOX !== "1",
@@ -80,7 +114,7 @@ function scheduleIdleClose() {
   idleTimer = setTimeout(() => {
     serial(async () => {
       await context?.close();
-    }).catch((e) => console.error("Error al cerrar Brave:", e));
+    }).catch((e) => console.error("Error al cerrar el navegador:", e));
   }, IDLE_CLOSE_MS);
   idleTimer.unref();
 }
@@ -127,7 +161,7 @@ async function assertUsable(page) {
   }
   if (await page.locator(CAPTCHA_SELECTOR).first().isVisible().catch(() => false)) {
     throw new UserActionNeeded(
-      "TikTok muestra un captcha. Resuelvelo a mano en la ventana de Brave y reintenta.",
+      "TikTok muestra un captcha. Resuelvelo a mano en la ventana del navegador y reintenta.",
     );
   }
 }
@@ -382,7 +416,7 @@ async function login(timeoutMinutes) {
     } catch (e) {
       if (page.isClosed()) {
         throw new UserActionNeeded(
-          "La ventana de Brave se cerro antes de iniciar sesion. Ejecuta tiktok_login otra vez y dejala abierta.",
+          "La ventana del navegador se cerro antes de iniciar sesion. Ejecuta tiktok_login otra vez y dejala abierta.",
         );
       }
       throw e;
@@ -411,7 +445,7 @@ function tool(name, description, schema, handler) {
 
 tool(
   "tiktok_login",
-  "Abre Brave con el perfil del MCP para que la persona inicie sesion a mano. Solo hace falta una vez. En Docker la ventana se ve en http://localhost:6080/vnc.html.",
+  "Abre el navegador con el perfil del MCP para que la persona inicie sesion a mano. Solo hace falta una vez. En Docker la ventana se ve en http://localhost:6080/vnc.html.",
   { timeout_minutes: z.number().min(1).max(15).default(5) },
   async ({ timeout_minutes }) => {
     const ok = await login(timeout_minutes);
